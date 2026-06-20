@@ -33,7 +33,7 @@
     flex: 1 1 auto; position: relative;
     background: #000; min-width: 0;
   }
-  #viewport canvas { display: block; width: 100% !important; height: 100% !important; }
+  #viewport canvas { display: block; width: 100% !important; height: 100% !important; outline: none; }
   #sidebar {
     width: 320px; flex: 0 0 320px;
     background: var(--panel);
@@ -561,7 +561,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.domElement.tabIndex = 0;
 viewportEl.appendChild(renderer.domElement);
+renderer.domElement.focus();
 
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.target.set(50, 0, 50);
@@ -990,12 +992,25 @@ function animate() {
 animate();
 
 /* -------------------- input -------------------- */
-window.addEventListener('keydown', (e) => {
-  if (document.activeElement && ['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+const canvas = renderer.domElement;
+canvas.addEventListener('click', () => canvas.focus());
+canvas.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
-  if (k in keys) keys[k] = true;
+  if (k in keys) { e.preventDefault(); keys[k] = true; }
+});
+canvas.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k in keys) keys[k] = false;
+});
+// also support window-level for when canvas can't receive focus (e.g. cross-origin iframe)
+window.addEventListener('keydown', (e) => {
+  if (document.activeElement === canvas) return; // already handled above
+  if (['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k in keys) { e.preventDefault(); keys[k] = true; }
 });
 window.addEventListener('keyup', (e) => {
+  if (document.activeElement === canvas) return;
   const k = e.key.toLowerCase();
   if (k in keys) keys[k] = false;
 });
