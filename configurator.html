@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>ENV CONFIG — Game Environment Configurator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f12;
+    --panel: #18181f;
+    --border: #2a2a35;
+    --accent: #c8a84b;
+    --text: #e8e4d9;
+    --text-dim: #7a7a8a;
+    --input: #22222c;
+    --danger: #d45f5f;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+    font-size: 12px;
+    overflow: hidden;
+  }
+  #app {
+    display: flex; flex-direction: row;
+    width: 100vw; height: 100vh;
+  }
+  #viewport {
+    flex: 1 1 auto; position: relative;
+    background: #000; min-width: 0;
+  }
+  #viewport canvas { display: block; width: 100% !important; height: 100% !important; }
+  #sidebar {
+    width: 320px; flex: 0 0 320px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    overflow-y: auto; overflow-x: hidden;
+    height: 100vh;
+  }
+  #sidebar::-webkit-scrollbar { width: 8px; }
+  #sidebar::-webkit-scrollbar-track { background: var(--panel); }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .brand {
+    border-top: 1px solid var(--accent);
+    padding: 14px 16px 12px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand .name {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.25em; color: var(--accent);
+  }
+  .brand .ver {
+    font-size: 10px; color: var(--text-dim);
+  }
+
+  details.section {
+    border-bottom: 1px solid var(--border);
+  }
+  details.section > summary {
+    cursor: pointer; list-style: none;
+    padding: 12px 16px;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text);
+    user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  details.section > summary::-webkit-details-marker { display: none; }
+  details.section > summary::after {
+    content: '+';
+    color: var(--accent); font-weight: 400;
+    transition: transform 0.15s;
+  }
+  details.section[open] > summary::after { content: '−'; }
+  details.section > summary:hover { background: #1d1d26; }
+
+  .section-body {
+    padding: 4px 16px 16px;
+  }
+
+  .row {
+    display: flex; flex-direction: column;
+    margin-bottom: 12px;
+  }
+  .row-inline {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px;
+  }
+  .row-inline > label { flex: 1; }
+  .label {
+    font-size: 10px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 4px;
+    display: flex; justify-content: space-between;
+  }
+  .label .val { color: var(--accent); }
+
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none; appearance: none;
+    height: 4px; background: var(--input); border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: none;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: none;
+  }
+  input[type=number], input[type=text], select {
+    background: var(--input); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px;
+    padding: 6px 8px; font-family: inherit; font-size: 11px;
+    width: 100%; outline: none;
+  }
+  input[type=number]:focus, select:focus, input[type=text]:focus {
+    border-color: var(--accent);
+  }
+  input[type=color] {
+    width: 32px; height: 22px; padding: 0; border: 1px solid var(--border);
+    background: var(--input); cursor: pointer; border-radius: 2px;
+  }
+  .slider-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row input[type=number] {
+    width: 64px; flex: 0 0 64px;
+  }
+  .vec3 {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;
+  }
+  .vec2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+  button {
+    background: var(--input); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px;
+    padding: 8px 12px; font-family: inherit; font-size: 11px;
+    cursor: pointer; width: 100%;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  button:hover { background: #2a2a35; border-color: var(--accent); }
+  button.primary {
+    background: var(--accent); color: #1a1a1a; border-color: var(--accent);
+    font-weight: 700;
+  }
+  button.primary:hover { background: #d8b85b; }
+
+  .toggle-group {
+    display: flex; border: 1px solid var(--border); border-radius: 3px;
+    overflow: hidden;
+  }
+  .toggle-group button {
+    border-radius: 0; border: none; border-right: 1px solid var(--border);
+    flex: 1; padding: 6px 4px; font-size: 10px;
+  }
+  .toggle-group button:last-child { border-right: none; }
+  .toggle-group button.active {
+    background: var(--accent); color: #1a1a1a;
+  }
+
+  .switch {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+  }
+  .switch input { display: none; }
+  .switch .track {
+    width: 28px; height: 16px; background: var(--input);
+    border: 1px solid var(--border); border-radius: 8px; position: relative;
+    transition: background 0.15s;
+  }
+  .switch .track::after {
+    content: ''; position: absolute; left: 1px; top: 1px;
+    width: 12px; height: 12px; background: var(--text-dim); border-radius: 50%;
+    transition: transform 0.15s, background 0.15s;
+  }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after {
+    transform: translateX(12px); background: #1a1a1a;
+  }
+
+  .dropzone {
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 16px 12px; text-align: center;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 12px;
+    color: var(--text-dim); font-size: 11px;
+  }
+  .dropzone:hover, .dropzone.drag {
+    border-color: var(--accent); background: #1d1d26; color: var(--text);
+  }
+  .dropzone .dz-title {
+    color: var(--text); font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; font-size: 10px;
+    margin-bottom: 4px;
+  }
+  .dropzone.loaded { border-style: solid; border-color: var(--accent); color: var(--text); }
+
+  .badges {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    max-height: 80px; overflow-y: auto;
+    margin-top: 6px;
+  }
+  .badge {
+    background: var(--input); color: var(--accent);
+    padding: 3px 6px; border-radius: 3px;
+    font-size: 10px; border: 1px solid var(--border);
+  }
+  .stats {
+    background: var(--input); padding: 8px;
+    border-radius: 3px; margin-top: 6px;
+    font-size: 10px; color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .stats span { color: var(--text); }
+  .error {
+    color: var(--danger); font-size: 10px;
+    margin-top: 6px; word-wrap: break-word;
+  }
+
+  pre.preview {
+    background: var(--input); border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px; font-size: 10px;
+    max-height: 240px; overflow: auto;
+    color: var(--text-dim); margin: 10px 0 0;
+    white-space: pre-wrap; word-break: break-all;
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute; top: 12px; left: 12px;
+    display: flex; flex-direction: column; gap: 4px;
+    pointer-events: none; z-index: 10;
+  }
+  #hud .pill {
+    background: rgba(15, 15, 18, 0.85);
+    border: 1px solid var(--border);
+    padding: 4px 8px; border-radius: 3px;
+    font-size: 10px; color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.08em;
+  }
+  #hud .pill .k { color: var(--text-dim); margin-right: 6px; }
+
+  /* Placeholder */
+  #placeholder {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 12px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    pointer-events: none; z-index: 5;
+  }
+
+  /* Loading spinner */
+  #loading {
+    position: absolute; inset: 0; background: rgba(15, 15, 18, 0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 20; pointer-events: all;
+  }
+  #loading.active { display: flex; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="viewport">
+    <div id="placeholder">Upload a character and map to begin</div>
+    <div id="hud">
+      <div class="pill"><span class="k">POS</span><span id="hud-pos">—</span></div>
+      <div class="pill"><span class="k">CLIP</span><span id="hud-clip">—</span></div>
+      <div class="pill"><span class="k">CAM</span><span id="hud-cam">follow</span></div>
+      <div class="pill"><span class="k">FPS</span><span id="hud-fps">0</span></div>
+    </div>
+    <div id="loading"><div class="spinner"></div></div>
+  </div>
+
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="name">ENV CONFIG</div>
+      <div class="ver">v1.0</div>
+    </div>
+
+    <!-- UPLOAD -->
+    <details class="section" open>
+      <summary>Upload</summary>
+      <div class="section-body">
+        <div class="dropzone" id="dz-char">
+          <div class="dz-title">Character (.glb)</div>
+          <div class="dz-info" id="dz-char-info">Drop or click to browse</div>
+          <input type="file" id="file-char" accept=".glb" style="display:none">
+        </div>
+        <div id="char-clips"></div>
+        <div class="error" id="char-error"></div>
+
+        <div class="dropzone" id="dz-map" style="margin-top:12px;">
+          <div class="dz-title">Map (.json)</div>
+          <div class="dz-info" id="dz-map-info">Drop or click to browse</div>
+          <input type="file" id="file-map" accept=".json,application/json" style="display:none">
+        </div>
+        <div id="map-stats"></div>
+        <div class="error" id="map-error"></div>
+      </div>
+    </details>
+
+    <!-- CHARACTER -->
+    <details class="section">
+      <summary>Character</summary>
+      <div class="section-body">
+        <div class="row">
+          <div class="label">Scale <span class="val" id="v-scale">1.00×</span></div>
+          <div class="slider-row">
+            <input type="range" id="r-scale" min="0.1" max="5" step="0.05" value="1">
+            <input type="number" id="n-scale" min="0.1" max="5" step="0.05" value="1">
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">Move speed <span class="val" id="v-speed">5</span></div>
+          <div class="slider-row">
+            <input type="range" id="r-speed" min="1" max="20" step="0.5" value="5">
+            <input type="number" id="n-speed" min="1" max="20" step="0.5" value="5">
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">Spawn position (tile)</div>
+          <div class="vec2">
+            <input type="number" id="spawn-x" value="50">
+            <input type="number" id="spawn-z" value="50">
+          </div>
+        </div>
+        <div class="row">
+          <button id="btn-reset-pos">Reset position</button>
+        </div>
+        <div class="row">
+          <div class="label">Active animation</div>
+          <select id="anim-select" disabled>
+            <option>Upload character first</option>
+          </select>
+        </div>
+        <div class="row">
+          <button id="btn-preview-anim">Preview animation</button>
+        </div>
+      </div>
+    </details>
+
+    <!-- CAMERA -->
+    <details class="section">
+      <summary>Camera</summary>
+      <div class="section-body">
+        <div class="row">
+          <div class="label">Mode</div>
+          <div class="toggle-group" id="cam-mode">
+            <button data-mode="follow" class="active">Follow</button>
+            <button data-mode="orbit">Orbit</button>
+            <button data-mode="fixed">Fixed</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">FOV <span class="val" id="v-fov">60°</span></div>
+          <div class="slider-row">
+            <input type="range" id="r-fov" min="30" max="120" step="1" value="60">
+            <input type="number" id="n-fov" min="30" max="120" step="1" value="60">
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">Follow height <span class="val" id="v-fh">30</span></div>
+          <div class="slider-row">
+            <input type="range" id="r-fh" min="5" max="80" step="1" value="30">
+            <input type="number" id="n-fh" min="5" max="80" step="1" value="30">
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">Follow distance <span class="val" id="v-fd">20</span></div>
+          <div class="slider-row">
+            <input type="range" id="r-fd" min="5" max="80" step="1" value="20">
+            <input type="number" id="n-fd" min="5" max="80" step="1" value="20">
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">Follow smoothing <span class="val" id="v-fs">0.10</span></div>
+          <input type="range" id="r-fs" min="0" max="1" step="0.01" value="0.1">
+        </div>
+        <div class="row">
+          <div class="label">Fixed position</div>
+          <div class="vec3">
+            <input type="number" id="fx-x" value="50">
+            <input type="number" id="fx-y" value="40">
+            <input type="number" id="fx-z" value="80">
+          </div>
+        </div>
+        <div class="row">
+          <div class="label">Fixed look-at</div>
+          <div class="vec3">
+            <input type="number" id="fl-x" value="50">
+            <input type="number" id="fl-y" value="0">
+            <input type="number" id="fl-z" value="50">
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- LIGHTING -->
+    <details class="section">
+      <summary>Lighting</summary>
+      <div class="section-body">
+        <div class="row">
+          <div class="label">Ambient intensity <span class="val" id="v-ai">0.60</span></div>
+          <input type="range" id="r-ai" min="0" max="2" step="0.05" value="0.6">
+        </div>
+        <div class="row-inline">
+          <label>Ambient color</label>
+          <input type="color" id="c-ac" value="#ffffff">
+        </div>
+        <div class="row">
+          <div class="label">Sun intensity <span class="val" id="v-si">1.00</span></div>
+          <input type="range" id="r-si" min="0" max="3" step="0.05" value="1.0">
+        </div>
+        <div class="row-inline">
+          <label>Sun color</label>
+          <input type="color" id="c-sc" value="#fff5e0">
+        </div>
+        <div class="row">
+          <div class="label">Sun X <span class="val" id="v-sx">50</span></div>
+          <input type="range" id="r-sx" min="-100" max="100" step="1" value="50">
+        </div>
+        <div class="row">
+          <div class="label">Sun Y <span class="val" id="v-sy">80</span></div>
+          <input type="range" id="r-sy" min="10" max="150" step="1" value="80">
+        </div>
+        <div class="row">
+          <div class="label">Sun Z <span class="val" id="v-sz">50</span></div>
+          <input type="range" id="r-sz" min="-100" max="100" step="1" value="50">
+        </div>
+        <div class="row-inline">
+          <label>Shadows</label>
+          <label class="switch"><input type="checkbox" id="t-shadow" checked><span class="track"></span></label>
+        </div>
+        <div class="row-inline">
+          <label>Sky color</label>
+          <input type="color" id="c-sky" value="#87ceeb">
+        </div>
+      </div>
+    </details>
+
+    <!-- MAP -->
+    <details class="section">
+      <summary>Map</summary>
+      <div class="section-body">
+        <div class="row-inline">
+          <label>Tile 0 color (grass)</label>
+          <input type="color" id="c-t0" value="#5a8a3c">
+        </div>
+        <div class="row-inline">
+          <label>Tile 7 color (path)</label>
+          <input type="color" id="c-t7" value="#9b7a4a">
+        </div>
+        <div class="row-inline">
+          <label>Show object labels</label>
+          <label class="switch"><input type="checkbox" id="t-labels" checked><span class="track"></span></label>
+        </div>
+        <div class="row">
+          <div class="label">Label size <span class="val" id="v-ls">1.00×</span></div>
+          <input type="range" id="r-ls" min="0.5" max="2" step="0.05" value="1">
+        </div>
+        <div class="row-inline">
+          <label>Tile grid visible</label>
+          <label class="switch"><input type="checkbox" id="t-grid"><span class="track"></span></label>
+        </div>
+      </div>
+    </details>
+
+    <!-- EXPORT -->
+    <details class="section">
+      <summary>Export</summary>
+      <div class="section-body">
+        <button class="primary" id="btn-export">Export settings.json</button>
+        <pre class="preview" id="export-preview"></pre>
+      </div>
+    </details>
+  </aside>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* -------------------- state -------------------- */
+const state = {
+  charFile: null,        // { name, size }
+  mapFile: null,         // { name }
+  mapData: null,         // parsed td-map
+  character: {
+    scale: 1.0,
+    moveSpeed: 5,
+    spawnTile: { x: 50, z: 50 },
+    clipNames: [],
+    idleClip: null,
+    walkClip: null,
+    runClip: null,
+    activeClip: null,
+  },
+  camera: {
+    mode: 'follow',
+    fov: 60,
+    follow: { height: 30, distance: 20, smoothing: 0.1 },
+    fixed: { position: { x: 50, y: 40, z: 80 }, lookAt: { x: 50, y: 0, z: 50 } },
+  },
+  lighting: {
+    ambientIntensity: 0.6, ambientColor: '#ffffff',
+    sunIntensity: 1.0, sunColor: '#fff5e0',
+    sunPosition: { x: 50, y: 80, z: 50 },
+    shadowsEnabled: true, skyColor: '#87ceeb',
+  },
+  map: {
+    tileColors: { 0: '#5a8a3c', 7: '#9b7a4a' },
+    showObjectLabels: true,
+    labelSize: 1.0,
+    gridVisible: false,
+  },
+};
+
+/* -------------------- scene -------------------- */
+const viewportEl = document.getElementById('viewport');
+const placeholderEl = document.getElementById('placeholder');
+const loadingEl = document.getElementById('loading');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(state.lighting.skyColor);
+
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+camera.position.set(50, 40, 80);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+viewportEl.appendChild(renderer.domElement);
+
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.target.set(50, 0, 50);
+orbit.enableDamping = true;
+orbit.enabled = false;
+orbit.update();
+
+/* lights */
+const ambient = new THREE.AmbientLight(state.lighting.ambientColor, state.lighting.ambientIntensity);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(state.lighting.sunColor, state.lighting.sunIntensity);
+sun.position.set(state.lighting.sunPosition.x, state.lighting.sunPosition.y, state.lighting.sunPosition.z);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 300;
+sun.shadow.camera.left = -100;
+sun.shadow.camera.right = 100;
+sun.shadow.camera.top = 100;
+sun.shadow.camera.bottom = -100;
+scene.add(sun);
+scene.add(sun.target);
+
+/* containers */
+const mapGroup = new THREE.Group();
+scene.add(mapGroup);
+const objectsGroup = new THREE.Group();
+scene.add(objectsGroup);
+const characterGroup = new THREE.Group();
+scene.add(characterGroup);
+
+let gridHelper = null;
+
+/* -------------------- resize -------------------- */
+function resize() {
+  const w = viewportEl.clientWidth, h = viewportEl.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* -------------------- HUD -------------------- */
+const hudPos = document.getElementById('hud-pos');
+const hudClip = document.getElementById('hud-clip');
+const hudCam = document.getElementById('hud-cam');
+const hudFps = document.getElementById('hud-fps');
+const fpsBuf = []; let lastTime = performance.now();
+
+/* -------------------- map -------------------- */
+const OBJECT_COLORS = {
+  castle: 0x6b7a8f,
+  goal: 0xc44d4d,
+  gold_mine: 0xe0b84c,
+  keep: 0x7a5a3a,
+};
+
+let tileInstancedMeshes = {}; // tileId -> InstancedMesh
+
+function decodeRLE(rle, width, height) {
+  const total = width * height;
+  const out = new Uint8Array(total);
+  let idx = 0;
+  for (let i = 0; i < rle.length; i += 2) {
+    const tileId = rle[i], runLen = rle[i + 1];
+    for (let k = 0; k < runLen; k++) {
+      if (idx >= total) throw new Error('RLE overrun');
+      out[idx++] = tileId;
+    }
+  }
+  if (idx !== total) throw new Error(`RLE underrun: ${idx} vs ${total}`);
+  return out;
+}
+
+function validateMap(d) {
+  if (!d || typeof d !== 'object') throw new Error('Not an object');
+  if (d.format !== 'td-map') throw new Error(`format must be "td-map", got "${d.format}"`);
+  if (d.version !== 1) throw new Error(`version must be 1, got ${d.version}`);
+  if (!Number.isInteger(d.width) || d.width <= 0) throw new Error('width must be positive integer');
+  if (!Number.isInteger(d.height) || d.height <= 0) throw new Error('height must be positive integer');
+  if (!Array.isArray(d.terrainRLE)) throw new Error('terrainRLE must be array');
+  if (d.terrainRLE.length % 2 !== 0) throw new Error('terrainRLE must have even length');
+  let sum = 0;
+  for (let i = 1; i < d.terrainRLE.length; i += 2) sum += d.terrainRLE[i];
+  if (sum !== d.width * d.height) throw new Error(`RLE sum ${sum} ≠ ${d.width * d.height}`);
+  if (!Array.isArray(d.objects)) throw new Error('objects must be array');
+  return true;
+}
+
+function buildMap() {
+  // clear
+  for (const k of Object.keys(tileInstancedMeshes)) {
+    const m = tileInstancedMeshes[k];
+    mapGroup.remove(m);
+    m.geometry.dispose();
+    m.material.dispose();
+  }
+  tileInstancedMeshes = {};
+  while (objectsGroup.children.length) {
+    const c = objectsGroup.children.pop();
+    c.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+        else o.material.dispose();
+      }
+    });
+  }
+
+  if (!state.mapData) return;
+  const { width, height, terrainRLE, objects } = state.mapData;
+  const terrain = decodeRLE(terrainRLE, width, height);
+
+  // group tile positions by tileId
+  const buckets = {};
+  for (let z = 0; z < height; z++) {
+    for (let x = 0; x < width; x++) {
+      const t = terrain[z * width + x];
+      if (!buckets[t]) buckets[t] = [];
+      buckets[t].push([x, z]);
+    }
+  }
+
+  const geo = new THREE.PlaneGeometry(1, 1);
+  geo.rotateX(-Math.PI / 2);
+
+  const dummy = new THREE.Object3D();
+  for (const [tid, positions] of Object.entries(buckets)) {
+    const colorHex = state.map.tileColors[tid] || (tid === '7' ? '#9b7a4a' : '#5a8a3c');
+    const mat = new THREE.MeshLambertMaterial({ color: new THREE.Color(colorHex) });
+    const inst = new THREE.InstancedMesh(geo, mat, positions.length);
+    inst.receiveShadow = true;
+    for (let i = 0; i < positions.length; i++) {
+      const [x, z] = positions[i];
+      dummy.position.set(x + 0.5, 0, z + 0.5);
+      dummy.updateMatrix();
+      inst.setMatrixAt(i, dummy.matrix);
+    }
+    inst.instanceMatrix.needsUpdate = true;
+    mapGroup.add(inst);
+    tileInstancedMeshes[tid] = inst;
+  }
+
+  // objects
+  for (const obj of objects) {
+    const color = OBJECT_COLORS[obj.type] ?? 0xaaaaaa;
+    const box = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 1.5, 1.2),
+      new THREE.MeshLambertMaterial({ color }),
+    );
+    box.position.set(obj.x + 0.5, 0.75, obj.z + 0.5);
+    if (obj.rotation) box.rotation.y = obj.rotation;
+    box.castShadow = true;
+    box.receiveShadow = true;
+    objectsGroup.add(box);
+
+    const sprite = makeLabelSprite(obj.type);
+    sprite.position.set(obj.x + 0.5, 2.4, obj.z + 0.5);
+    sprite.userData.isLabel = true;
+    objectsGroup.add(sprite);
+  }
+
+  applyLabelVisibility();
+  applyLabelSize();
+  applyGridVisibility();
+}
+
+function makeLabelSprite(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(15, 15, 18, 0.85)';
+  ctx.fillRect(0, 0, 256, 64);
+  ctx.strokeStyle = '#c8a84b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, 254, 62);
+  ctx.fillStyle = '#e8e4d9';
+  ctx.font = 'bold 28px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 32);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(3, 0.75, 1);
+  sprite.userData.baseScale = { x: 3, y: 0.75 };
+  return sprite;
+}
+
+function applyLabelVisibility() {
+  objectsGroup.traverse(o => {
+    if (o.userData.isLabel) o.visible = state.map.showObjectLabels;
+  });
+}
+function applyLabelSize() {
+  const s = state.map.labelSize;
+  objectsGroup.traverse(o => {
+    if (o.userData.isLabel) {
+      const b = o.userData.baseScale;
+      o.scale.set(b.x * s, b.y * s, 1);
+    }
+  });
+}
+function applyGridVisibility() {
+  if (gridHelper) { scene.remove(gridHelper); gridHelper.geometry.dispose(); gridHelper.material.dispose(); gridHelper = null; }
+  if (!state.mapData) return;
+  if (state.map.gridVisible) {
+    const w = state.mapData.width, h = state.mapData.height;
+    const size = Math.max(w, h);
+    gridHelper = new THREE.GridHelper(size, size, 0xc8a84b, 0x3a3a45);
+    gridHelper.position.set(size / 2, 0.01, size / 2);
+    scene.add(gridHelper);
+  }
+}
+
+/* -------------------- character -------------------- */
+let character = null;
+let mixer = null;
+let clipMap = {}; // name -> AnimationClip
+let currentAction = null;
+let characterPos = new THREE.Vector3(50, 0, 50);
+let characterRot = 0;
+const keys = { w: false, a: false, s: false, d: false };
+
+function pickClip(predicate) {
+  for (const name of state.character.clipNames) {
+    if (predicate(name)) return name;
+  }
+  return null;
+}
+
+function loadCharacterFromBuffer(buf, filename) {
+  showLoading(true);
+  const loader = new GLTFLoader();
+  loader.parse(buf, '', (gltf) => {
+    // remove old
+    if (character) {
+      characterGroup.remove(character);
+      character.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) {
+          if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+          else o.material.dispose();
+        }
+      });
+    }
+    character = gltf.scene;
+    character.traverse(o => {
+      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    });
+    character.scale.setScalar(state.character.scale);
+    characterGroup.add(character);
+
+    mixer = new THREE.AnimationMixer(character);
+    clipMap = {};
+    state.character.clipNames = [];
+    for (const clip of gltf.animations) {
+      clipMap[clip.name] = clip;
+      state.character.clipNames.push(clip.name);
+    }
+
+    state.character.idleClip = pickClip(n => /idle/i.test(n)) || state.character.clipNames[0] || null;
+    state.character.walkClip = pickClip(n => /walk/i.test(n));
+    state.character.runClip = pickClip(n => /run/i.test(n));
+    state.character.activeClip = state.character.idleClip;
+
+    // populate dropdown
+    const sel = document.getElementById('anim-select');
+    sel.innerHTML = '';
+    if (state.character.clipNames.length === 0) {
+      const o = document.createElement('option'); o.textContent = '(no clips)'; sel.appendChild(o);
+      sel.disabled = true;
+    } else {
+      for (const n of state.character.clipNames) {
+        const o = document.createElement('option');
+        o.value = n; o.textContent = n;
+        if (n === state.character.activeClip) o.selected = true;
+        sel.appendChild(o);
+      }
+      sel.disabled = false;
+    }
+
+    playClip(state.character.activeClip);
+
+    // badges
+    const cclips = document.getElementById('char-clips');
+    cclips.innerHTML = '';
+    if (state.character.clipNames.length) {
+      const wrap = document.createElement('div'); wrap.className = 'badges';
+      for (const n of state.character.clipNames) {
+        const b = document.createElement('span'); b.className = 'badge'; b.textContent = n;
+        wrap.appendChild(b);
+      }
+      cclips.appendChild(wrap);
+    }
+
+    state.charFile = { name: filename, size: buf.byteLength };
+    const info = document.getElementById('dz-char-info');
+    info.innerHTML = `<span style="color:var(--accent)">${filename}</span><br>${(buf.byteLength/1024).toFixed(1)} KB · ${state.character.clipNames.length} clips`;
+    document.getElementById('dz-char').classList.add('loaded');
+    document.getElementById('char-error').textContent = '';
+
+    // spawn
+    resetCharacterPosition();
+    updatePlaceholder();
+    updatePreview();
+    showLoading(false);
+  }, (err) => {
+    showLoading(false);
+    document.getElementById('char-error').textContent = `Failed to parse GLB: ${err.message || err}`;
+  });
+}
+
+function playClip(name) {
+  if (!mixer || !name || !clipMap[name]) return;
+  const clip = clipMap[name];
+  const next = mixer.clipAction(clip);
+  next.reset(); next.setLoop(THREE.LoopRepeat); next.play();
+  if (currentAction && currentAction !== next) {
+    currentAction.crossFadeTo(next, 0.25, false);
+  }
+  currentAction = next;
+  state.character.activeClip = name;
+}
+
+function resetCharacterPosition() {
+  const sx = state.character.spawnTile.x + 0.5;
+  const sz = state.character.spawnTile.z + 0.5;
+  characterPos.set(sx, 0, sz);
+  if (character) character.position.copy(characterPos);
+}
+
+/* -------------------- camera control -------------------- */
+function setCameraMode(mode) {
+  state.camera.mode = mode;
+  hudCam.textContent = mode;
+  if (mode === 'orbit') {
+    orbit.enabled = true;
+    orbit.target.copy(characterPos);
+    orbit.update();
+  } else {
+    orbit.enabled = false;
+  }
+  if (mode === 'fixed') {
+    const p = state.camera.fixed.position;
+    const l = state.camera.fixed.lookAt;
+    camera.position.set(p.x, p.y, p.z);
+    camera.lookAt(l.x, l.y, l.z);
+  }
+  // toggle buttons
+  for (const b of document.querySelectorAll('#cam-mode button')) {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  }
+  updatePreview();
+}
+
+/* -------------------- loop -------------------- */
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+
+  // FPS
+  const now = performance.now();
+  fpsBuf.push(1000 / Math.max(1, now - lastTime));
+  if (fpsBuf.length > 60) fpsBuf.shift();
+  lastTime = now;
+  hudFps.textContent = Math.round(fpsBuf.reduce((a,b)=>a+b,0) / fpsBuf.length);
+
+  // movement
+  if (character && state.mapData) {
+    let vx = 0, vz = 0;
+    if (keys.w) vz -= 1;
+    if (keys.s) vz += 1;
+    if (keys.a) vx -= 1;
+    if (keys.d) vx += 1;
+    const moving = vx !== 0 || vz !== 0;
+    if (moving) {
+      const len = Math.hypot(vx, vz);
+      vx /= len; vz /= len;
+      const speed = state.character.moveSpeed;
+      characterPos.x += vx * speed * dt;
+      characterPos.z += vz * speed * dt;
+      characterPos.x = Math.max(0, Math.min(state.mapData.width, characterPos.x));
+      characterPos.z = Math.max(0, Math.min(state.mapData.height, characterPos.z));
+      characterRot = Math.atan2(vx, vz);
+      character.position.copy(characterPos);
+      character.rotation.y = characterRot;
+
+      const walkClip = state.character.walkClip || state.character.runClip;
+      if (walkClip && state.character.activeClip !== walkClip) playClip(walkClip);
+    } else {
+      const idle = state.character.idleClip;
+      if (idle && state.character.activeClip !== idle &&
+          (state.character.activeClip === state.character.walkClip ||
+           state.character.activeClip === state.character.runClip)) {
+        playClip(idle);
+      }
+      if (character) character.position.copy(characterPos);
+    }
+    hudPos.textContent = `${Math.floor(characterPos.x)},${Math.floor(characterPos.z)}`;
+    hudClip.textContent = state.character.activeClip || '—';
+  }
+
+  if (mixer) mixer.update(dt);
+
+  // camera
+  if (state.camera.mode === 'follow' && character) {
+    const targetPos = new THREE.Vector3(
+      characterPos.x,
+      state.camera.follow.height,
+      characterPos.z + state.camera.follow.distance
+    );
+    const s = 1 - state.camera.follow.smoothing;
+    camera.position.lerp(targetPos, s);
+    camera.lookAt(characterPos.x, 0, characterPos.z);
+  } else if (state.camera.mode === 'orbit') {
+    if (character) orbit.target.lerp(characterPos, 0.1);
+    orbit.update();
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+/* -------------------- input -------------------- */
+window.addEventListener('keydown', (e) => {
+  if (document.activeElement && ['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k in keys) keys[k] = true;
+});
+window.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k in keys) keys[k] = false;
+});
+
+/* -------------------- file drops -------------------- */
+function wireDropzone(zoneId, inputId, handler) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  zone.addEventListener('click', () => input.click());
+  input.addEventListener('change', (e) => {
+    if (e.target.files[0]) handler(e.target.files[0]);
+  });
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault(); zone.classList.remove('drag');
+    if (e.dataTransfer.files[0]) handler(e.dataTransfer.files[0]);
+  });
+}
+
+wireDropzone('dz-char', 'file-char', (file) => {
+  if (!file.name.toLowerCase().endsWith('.glb')) {
+    document.getElementById('char-error').textContent = 'File must be a .glb';
+    return;
+  }
+  document.getElementById('char-error').textContent = '';
+  const reader = new FileReader();
+  reader.onload = () => loadCharacterFromBuffer(reader.result, file.name);
+  reader.onerror = () => { document.getElementById('char-error').textContent = 'Read failed'; };
+  reader.readAsArrayBuffer(file);
+});
+
+wireDropzone('dz-map', 'file-map', (file) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      validateMap(data);
+      state.mapData = data;
+      state.mapFile = { name: file.name };
+      // clamp spawn
+      state.character.spawnTile.x = Math.min(state.character.spawnTile.x, data.width - 1);
+      state.character.spawnTile.z = Math.min(state.character.spawnTile.z, data.height - 1);
+      // default spawn = map center if first load
+      if (!state._mapLoadedOnce) {
+        state.character.spawnTile.x = Math.floor(data.width / 2);
+        state.character.spawnTile.z = Math.floor(data.height / 2);
+        document.getElementById('spawn-x').value = state.character.spawnTile.x;
+        document.getElementById('spawn-z').value = state.character.spawnTile.z;
+        state._mapLoadedOnce = true;
+      }
+      // clamp spawn input ranges
+      document.getElementById('spawn-x').max = data.width - 1;
+      document.getElementById('spawn-z').max = data.height - 1;
+      document.getElementById('spawn-x').min = 0;
+      document.getElementById('spawn-z').min = 0;
+
+      buildMap();
+      resetCharacterPosition();
+      // stats
+      const tileCounts = {};
+      for (let i = 0; i < data.terrainRLE.length; i += 2) {
+        const t = data.terrainRLE[i], r = data.terrainRLE[i+1];
+        tileCounts[t] = (tileCounts[t] || 0) + r;
+      }
+      const objCounts = {};
+      for (const o of data.objects) objCounts[o.type] = (objCounts[o.type] || 0) + 1;
+      const stats = document.getElementById('map-stats');
+      stats.innerHTML = `<div class="stats">
+        Grid: <span>${data.width} × ${data.height}</span><br>
+        Tiles: ${Object.entries(tileCounts).map(([k,v])=>`<span>${k}=${v}</span>`).join(' ')}<br>
+        Objects: ${Object.entries(objCounts).map(([k,v])=>`<span>${k}=${v}</span>`).join(' ') || '<span>none</span>'}
+      </div>`;
+      const info = document.getElementById('dz-map-info');
+      info.innerHTML = `<span style="color:var(--accent)">${file.name}</span><br>${data.width}×${data.height} · ${data.objects.length} objects`;
+      document.getElementById('dz-map').classList.add('loaded');
+      document.getElementById('map-error').textContent = '';
+      updatePlaceholder();
+      updatePreview();
+    } catch (err) {
+      document.getElementById('map-error').textContent = `Invalid td-map: ${err.message}`;
+    }
+  };
+  reader.onerror = () => { document.getElementById('map-error').textContent = 'Read failed'; };
+  reader.readAsText(file);
+});
+
+/* -------------------- UI bindings -------------------- */
+function bindSlider(rId, nId, vId, fmt, onChange) {
+  const r = document.getElementById(rId), n = document.getElementById(nId);
+  const v = vId ? document.getElementById(vId) : null;
+  const apply = (val) => {
+    val = parseFloat(val);
+    if (isNaN(val)) return;
+    r.value = val; if (n) n.value = val;
+    if (v) v.textContent = fmt(val);
+    onChange(val);
+    updatePreview();
+  };
+  r.addEventListener('input', () => apply(r.value));
+  if (n) n.addEventListener('input', () => apply(n.value));
+}
+
+function bindSingleSlider(rId, vId, fmt, onChange) {
+  const r = document.getElementById(rId);
+  const v = document.getElementById(vId);
+  r.addEventListener('input', () => {
+    const val = parseFloat(r.value);
+    v.textContent = fmt(val);
+    onChange(val);
+    updatePreview();
+  });
+}
+
+/* Character */
+bindSlider('r-scale', 'n-scale', 'v-scale', v => `${v.toFixed(2)}×`, v => {
+  state.character.scale = v; if (character) character.scale.setScalar(v);
+});
+bindSlider('r-speed', 'n-speed', 'v-speed', v => v.toString(), v => {
+  state.character.moveSpeed = v;
+});
+document.getElementById('spawn-x').addEventListener('input', (e) => {
+  state.character.spawnTile.x = parseInt(e.target.value) || 0; updatePreview();
+});
+document.getElementById('spawn-z').addEventListener('input', (e) => {
+  state.character.spawnTile.z = parseInt(e.target.value) || 0; updatePreview();
+});
+document.getElementById('btn-reset-pos').addEventListener('click', resetCharacterPosition);
+document.getElementById('anim-select').addEventListener('change', (e) => {
+  const name = e.target.value;
+  // reassign idle to the selected clip
+  state.character.idleClip = name;
+  playClip(name);
+  updatePreview();
+});
+document.getElementById('btn-preview-anim').addEventListener('click', () => {
+  const sel = document.getElementById('anim-select');
+  if (sel.value && clipMap[sel.value]) playClip(sel.value);
+});
+
+/* Camera */
+for (const b of document.querySelectorAll('#cam-mode button')) {
+  b.addEventListener('click', () => setCameraMode(b.dataset.mode));
+}
+bindSlider('r-fov', 'n-fov', 'v-fov', v => `${v}°`, v => {
+  state.camera.fov = v; camera.fov = v; camera.updateProjectionMatrix();
+});
+bindSlider('r-fh', 'n-fh', 'v-fh', v => v.toString(), v => { state.camera.follow.height = v; });
+bindSlider('r-fd', 'n-fd', 'v-fd', v => v.toString(), v => { state.camera.follow.distance = v; });
+bindSingleSlider('r-fs', 'v-fs', v => v.toFixed(2), v => { state.camera.follow.smoothing = v; });
+
+['fx-x','fx-y','fx-z'].forEach((id, i) => {
+  document.getElementById(id).addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value) || 0;
+    const k = ['x','y','z'][i];
+    state.camera.fixed.position[k] = v;
+    if (state.camera.mode === 'fixed') setCameraMode('fixed');
+    updatePreview();
+  });
+});
+['fl-x','fl-y','fl-z'].forEach((id, i) => {
+  document.getElementById(id).addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value) || 0;
+    const k = ['x','y','z'][i];
+    state.camera.fixed.lookAt[k] = v;
+    if (state.camera.mode === 'fixed') setCameraMode('fixed');
+    updatePreview();
+  });
+});
+
+/* Lighting */
+bindSingleSlider('r-ai', 'v-ai', v => v.toFixed(2), v => {
+  state.lighting.ambientIntensity = v; ambient.intensity = v;
+});
+document.getElementById('c-ac').addEventListener('input', (e) => {
+  state.lighting.ambientColor = e.target.value; ambient.color.set(e.target.value); updatePreview();
+});
+bindSingleSlider('r-si', 'v-si', v => v.toFixed(2), v => {
+  state.lighting.sunIntensity = v; sun.intensity = v;
+});
+document.getElementById('c-sc').addEventListener('input', (e) => {
+  state.lighting.sunColor = e.target.value; sun.color.set(e.target.value); updatePreview();
+});
+bindSingleSlider('r-sx', 'v-sx', v => v.toString(), v => {
+  state.lighting.sunPosition.x = v; sun.position.x = v;
+});
+bindSingleSlider('r-sy', 'v-sy', v => v.toString(), v => {
+  state.lighting.sunPosition.y = v; sun.position.y = v;
+});
+bindSingleSlider('r-sz', 'v-sz', v => v.toString(), v => {
+  state.lighting.sunPosition.z = v; sun.position.z = v;
+});
+document.getElementById('t-shadow').addEventListener('change', (e) => {
+  state.lighting.shadowsEnabled = e.target.checked;
+  renderer.shadowMap.enabled = e.target.checked;
+  sun.castShadow = e.target.checked;
+  scene.traverse(o => {
+    if (o.isMesh) { o.castShadow = e.target.checked; o.receiveShadow = e.target.checked; }
+  });
+  updatePreview();
+});
+document.getElementById('c-sky').addEventListener('input', (e) => {
+  state.lighting.skyColor = e.target.value;
+  scene.background = new THREE.Color(e.target.value);
+  updatePreview();
+});
+
+/* Map */
+document.getElementById('c-t0').addEventListener('input', (e) => {
+  state.map.tileColors[0] = e.target.value;
+  if (tileInstancedMeshes[0]) tileInstancedMeshes[0].material.color.set(e.target.value);
+  updatePreview();
+});
+document.getElementById('c-t7').addEventListener('input', (e) => {
+  state.map.tileColors[7] = e.target.value;
+  if (tileInstancedMeshes[7]) tileInstancedMeshes[7].material.color.set(e.target.value);
+  updatePreview();
+});
+document.getElementById('t-labels').addEventListener('change', (e) => {
+  state.map.showObjectLabels = e.target.checked; applyLabelVisibility(); updatePreview();
+});
+bindSingleSlider('r-ls', 'v-ls', v => `${v.toFixed(2)}×`, v => {
+  state.map.labelSize = v; applyLabelSize();
+});
+document.getElementById('t-grid').addEventListener('change', (e) => {
+  state.map.gridVisible = e.target.checked; applyGridVisibility();
+});
+
+/* -------------------- export -------------------- */
+function buildSettings() {
+  return {
+    meta: {
+      exportedAt: new Date().toISOString(),
+      toolVersion: 'env-config-1.0',
+    },
+    assets: {
+      characterFile: state.charFile ? state.charFile.name : null,
+      mapFile: state.mapFile ? state.mapFile.name : null,
+    },
+    character: {
+      scale: state.character.scale,
+      moveSpeed: state.character.moveSpeed,
+      spawnTile: { x: state.character.spawnTile.x, z: state.character.spawnTile.z },
+      animations: {
+        idle: state.character.idleClip,
+        walk: state.character.walkClip,
+        run: state.character.runClip,
+        allClips: state.character.clipNames.slice(),
+      },
+    },
+    camera: {
+      mode: state.camera.mode,
+      fov: state.camera.fov,
+      follow: {
+        height: state.camera.follow.height,
+        distance: state.camera.follow.distance,
+        smoothing: state.camera.follow.smoothing,
+      },
+      fixed: {
+        position: { ...state.camera.fixed.position },
+        lookAt: { ...state.camera.fixed.lookAt },
+      },
+    },
+    lighting: {
+      ambientIntensity: state.lighting.ambientIntensity,
+      ambientColor: state.lighting.ambientColor,
+      sunIntensity: state.lighting.sunIntensity,
+      sunColor: state.lighting.sunColor,
+      sunPosition: { ...state.lighting.sunPosition },
+      shadowsEnabled: state.lighting.shadowsEnabled,
+      skyColor: state.lighting.skyColor,
+    },
+    map: {
+      tileColors: {
+        0: state.map.tileColors[0],
+        7: state.map.tileColors[7],
+      },
+      showObjectLabels: state.map.showObjectLabels,
+    },
+  };
+}
+
+function updatePreview() {
+  document.getElementById('export-preview').textContent =
+    JSON.stringify(buildSettings(), null, 2);
+}
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const settings = buildSettings();
+  const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'game-settings.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+/* -------------------- misc -------------------- */
+function updatePlaceholder() {
+  placeholderEl.style.display = (character && state.mapData) ? 'none' : 'flex';
+}
+function showLoading(on) {
+  loadingEl.classList.toggle('active', on);
+}
+
+updatePreview();
+</script>
+</body>
+</html>
