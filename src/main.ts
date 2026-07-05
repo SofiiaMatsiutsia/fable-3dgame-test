@@ -6,8 +6,10 @@ import { Tower, TOWER_DEFS, type TowerType } from './entities/tower';
 import { Projectile } from './entities/projectile';
 import { PlayerController } from './player/controller';
 import { Hud } from './ui/hud';
+import { buildTweaks } from './ui/tweaks';
 import { events } from './core/events';
 import { state } from './core/state';
+import { settings } from './core/settings';
 import { sfx } from './audio/sfx';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -44,6 +46,7 @@ function buildTower(type: TowerType, plot: Plot): Tower | null {
 }
 
 new Hud(camera, plots, buildTower, () => spawner.startWave());
+buildTweaks();
 
 // impact FX: brief expanding ring
 const impacts: { mesh: THREE.Mesh; life: number }[] = [];
@@ -61,7 +64,7 @@ function spawnImpact(pos: THREE.Vector3, color: number): void {
 
 // debug/testing handle (also handy for the future teacher agent)
 Object.assign(window as unknown as Record<string, unknown>, {
-  __game: { state, spawner, towers, projectiles, plots, player, events, buildTower },
+  __game: { state, spawner, towers, projectiles, plots, player, events, buildTower, settings },
 });
 
 const timer = new THREE.Timer();

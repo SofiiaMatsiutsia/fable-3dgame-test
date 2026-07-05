@@ -4,6 +4,7 @@ import { PATH } from '../world/arena';
 import { events } from '../core/events';
 import { state } from '../core/state';
 import { ASSETS, loadGlb } from '../core/assets';
+import { settings } from '../core/settings';
 
 export type EnemyType = 'grunt' | 'brute';
 
@@ -120,12 +121,13 @@ export class Enemy {
 
   update(dt: number, now: number): void {
     if (!this.alive) return;
+    if (this.object.scale.x !== settings.enemyScale) this.object.scale.setScalar(settings.enemyScale);
     const target = PATH[this.waypoint];
     const pos = this.object.position;
     const dir = target.clone().sub(pos).setY(0);
     const dist = dir.length();
     const slowed = now < this.slowUntil;
-    const speed = slowed ? this.baseSpeed * 0.45 : this.baseSpeed;
+    const speed = (slowed ? this.baseSpeed * 0.45 : this.baseSpeed) * settings.enemySpeed;
     if (dist < 0.3) {
       this.waypoint++;
       if (this.waypoint >= PATH.length) {

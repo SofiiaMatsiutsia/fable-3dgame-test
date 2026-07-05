@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Enemy } from './enemy';
 import { Projectile } from './projectile';
 import { ASSETS, loadGlb } from '../core/assets';
+import { settings } from '../core/settings';
 
 export type TowerType = 'arrow' | 'cannon' | 'frost';
 
@@ -71,6 +72,7 @@ export class Tower {
 
   update(dt: number, _now: number, enemies: Enemy[], projectiles: Projectile[], scene: THREE.Scene): void {
     const def = TOWER_DEFS[this.type];
+    if (this.object.scale.x !== settings.towerScale) this.object.scale.setScalar(settings.towerScale);
     this.cooldownLeft -= dt;
     if (this.cooldownLeft > 0) return;
 
@@ -88,7 +90,7 @@ export class Tower {
     if (!best) return;
 
     this.cooldownLeft = def.cooldown;
-    this.muzzle.copy(this.object.position).setY(this.head.position.y);
+    this.muzzle.copy(this.object.position).setY(this.head.position.y * this.object.scale.y);
     projectiles.push(
       new Projectile(
         {

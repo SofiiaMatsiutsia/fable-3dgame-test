@@ -4,15 +4,12 @@ import type { Enemy } from '../entities/enemy';
 import { events } from '../core/events';
 import { state } from '../core/state';
 import { ARENA_SIZE } from '../world/arena';
+import { settings } from '../core/settings';
 
-const MOVE_SPEED = 9;
 const ATTACK_RANGE = 3.2;
 const ATTACK_ARC_COS = Math.cos((110 * Math.PI) / 180 / 2); // ~110° frontal arc
 const ATTACK_DAMAGE = 18;
 const ATTACK_COOLDOWN = 0.45;
-
-// Fixed-angle chase camera: overview-friendly for tower defense.
-const CAM_OFFSET = new THREE.Vector3(0, 22, 17);
 
 export class PlayerController {
   readonly character: Character;
@@ -70,17 +67,24 @@ export class PlayerController {
     if (moving) {
       dir.normalize();
       const pos = this.character.object.position;
-      pos.addScaledVector(dir, MOVE_SPEED * dt);
+      pos.addScaledVector(dir, settings.moveSpeed * dt);
       const bound = ARENA_SIZE - 2;
       pos.x = THREE.MathUtils.clamp(pos.x, -bound, bound);
       pos.z = THREE.MathUtils.clamp(pos.z, -bound, bound);
       this.facing.copy(dir);
       this.character.object.rotation.y = Math.atan2(dir.x, dir.z);
     }
+    this.character.object.scale.setScalar(settings.heroScale);
     this.character.update(dt);
 
-    // camera follow (smoothed)
-    const targetCam = this.character.object.position.clone().add(CAM_OFFSET);
+    // camera follow (smoothed); fixed-angle chase camera, live-tunable via the settings panel
+    if (this.camera.fov !== settings.camFov) {
+      this.camera.fov = settings.camFov;
+      this.camera.updateProjectionMatrix();
+    }
+    const targetCam = this.character.object.position.clone();
+    targetCam.y += settings.camHeight;
+    targetCam.z += settings.camDistance;
     this.camera.position.lerp(targetCam, 1 - Math.exp(-6 * dt));
     this.camera.lookAt(this.character.object.position.clone().setY(1));
   }
