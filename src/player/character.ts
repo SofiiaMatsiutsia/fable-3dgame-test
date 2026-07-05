@@ -8,6 +8,22 @@ import { ASSETS, loadGlb } from '../core/assets';
 
 export type ClipName = 'idle' | 'run' | 'attack';
 
+// Meshy textures shimmer at the shallow angles the game camera views characters
+// from while they move. Anisotropic filtering keeps them crisp. three clamps the
+// value to the GPU max, so 8 is a safe request.
+export function sharpenTextures(material: THREE.Material | THREE.Material[]): void {
+  const mats = Array.isArray(material) ? material : [material];
+  for (const m of mats) {
+    for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'] as const) {
+      const tex = (m as unknown as Record<string, THREE.Texture | null>)[key];
+      if (tex) {
+        tex.anisotropy = 8;
+        tex.needsUpdate = true;
+      }
+    }
+  }
+}
+
 export class Character {
   readonly object = new THREE.Group();
   private mixer: THREE.AnimationMixer | null = null;
@@ -65,7 +81,14 @@ export class Character {
         }
         const model = gltf.scene;
         model.traverse((o) => {
-          if (o instanceof THREE.Mesh) o.castShadow = true;
+          if (o instanceof THREE.Mesh) {
+            o.castShadow = true;
+            // Skinned bounds track the bind pose, not the animated/moving mesh, so
+            // three culls the fox against a stale box and it flickers or vanishes
+            // at screen edges while running. Keep it always drawn.
+            o.frustumCulled = false;
+            sharpenTextures(o.material);
+          }
         });
         // normalize height to ~2 units (precise=true → bounds through bone transforms)
         model.updateMatrixWorld(true);

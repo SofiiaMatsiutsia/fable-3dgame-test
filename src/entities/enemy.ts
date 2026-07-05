@@ -4,6 +4,7 @@ import { PATH } from '../world/arena';
 import { events } from '../core/events';
 import { state } from '../core/state';
 import { ASSETS, loadGlb } from '../core/assets';
+import { sharpenTextures } from '../player/character';
 import { settings } from '../core/settings';
 
 export type EnemyType = 'grunt' | 'brute';
@@ -98,9 +99,13 @@ export class Enemy {
         model.traverse((o) => {
           if (o instanceof THREE.Mesh || o instanceof THREE.SkinnedMesh) {
             o.castShadow = true;
+            // skinned bounds track the bind pose, not the walking Viking, so
+            // three culls it against a stale box and it pops in/out at the edges
+            o.frustumCulled = false;
             // clone materials so the slow-tint doesn't leak across instances
             const mat = (o.material as THREE.Material).clone();
             o.material = mat;
+            sharpenTextures(mat);
             if (mat instanceof THREE.MeshStandardMaterial) this.tintable.push(mat);
           }
         });
