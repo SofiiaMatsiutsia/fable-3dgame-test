@@ -27,6 +27,18 @@ canvas { display: block; }
   #msg { top: 120px; }
 }
 
+/* settings tweak panel (lil-gui) — sits below the wave button */
+.lil-gui.autoPlace {
+  top: 64px;
+  right: 12px;
+  --background-color: rgba(15, 18, 30, 0.92);
+  --widget-color: #2c3350;
+  --hover-color: #3d4670;
+  --title-background-color: rgba(10, 12, 20, 0.9);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 #msg {
   position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
   font-size: 20px; font-weight: 600; text-shadow: 0 2px 4px #000;
