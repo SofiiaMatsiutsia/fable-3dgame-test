@@ -1,7 +1,9 @@
 import * as THREE from 'three';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { PATH } from '../world/arena';
 import { events } from '../core/events';
 import { state } from '../core/state';
+import { ASSETS, loadGlb } from '../core/assets';
 
 export type EnemyType = 'grunt' | 'brute';
 
@@ -9,6 +11,10 @@ const ENEMY_DEFS: Record<EnemyType, { hp: number; speed: number; gold: number; c
   grunt: { hp: 30, speed: 4.5, gold: 10, color: 0xcc4444, scale: 1 },
   brute: { hp: 110, speed: 2.6, gold: 25, color: 0x882299, scale: 1.6 },
 };
+
+// Viking model is normalized to this height (units) at scale 1, then
+// multiplied by the per-type scale (brutes tower over grunts).
+const VIKING_HEIGHT = 1.7;
 
 function makeHealthBar(): THREE.Sprite {
   const canvas = document.createElement('canvas');
@@ -42,7 +48,10 @@ export class Enemy {
   alive = true;
   private waypoint = 1;
   private readonly bar: THREE.Sprite;
-  private readonly body: THREE.Mesh;
+  private body: THREE.Mesh | null;
+  private mixer: THREE.AnimationMixer | null = null;
+  private walkAction: THREE.AnimationAction | null = null;
+  private readonly tintable: THREE.MeshStandardMaterial[] = [];
   private readonly baseSpeed: number;
   private walkPhase = Math.random() * Math.PI * 2;
 
@@ -53,24 +62,60 @@ export class Enemy {
     this.speed = this.baseSpeed = def.speed;
 
     const s = def.scale;
+    // capsule placeholder until the viking GLB arrives (usually instant after first load)
     this.body = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.45 * s, 0.8 * s, 4, 8),
       new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.7 })
     );
     this.body.position.y = 0.85 * s;
     this.body.castShadow = true;
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffee44, emissive: 0xffee44, emissiveIntensity: 1 });
-    for (const dx of [-0.18, 0.18]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08 * s), eyeMat);
-      eye.position.set(dx * s, 1.2 * s, 0.4 * s);
-      this.object.add(eye);
-    }
     this.bar = makeHealthBar();
-    this.bar.position.y = 1.9 * s;
+    this.bar.position.y = VIKING_HEIGHT * s + 0.4;
     drawHealthBar(this.bar, 1);
     this.object.add(this.body, this.bar);
     this.object.position.copy(PATH[0]);
     scene.add(this.object);
+    this.loadModel(s);
+  }
+
+  private loadModel(s: number): void {
+    loadGlb(ASSETS.enemy).then(
+      (gltf) => {
+        if (!this.alive || !this.body) return;
+        this.object.remove(this.body);
+        this.body.geometry.dispose();
+        (this.body.material as THREE.Material).dispose();
+        this.body = null;
+
+        const model = SkeletonUtils.clone(gltf.scene);
+        // precise=true: skinned vertices render through bone transforms, so
+        // plain geometry bounds are wildly wrong for Meshy rigs
+        model.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(model, true);
+        const h = box.max.y - box.min.y;
+        if (h > 0.01) model.scale.setScalar((VIKING_HEIGHT * s) / h);
+        model.traverse((o) => {
+          if (o instanceof THREE.Mesh || o instanceof THREE.SkinnedMesh) {
+            o.castShadow = true;
+            // clone materials so the slow-tint doesn't leak across instances
+            const mat = (o.material as THREE.Material).clone();
+            o.material = mat;
+            if (mat instanceof THREE.MeshStandardMaterial) this.tintable.push(mat);
+          }
+        });
+        this.object.add(model);
+
+        if (gltf.animations.length) {
+          this.mixer = new THREE.AnimationMixer(model);
+          const clip =
+            gltf.animations.find((c) => /walk|run|jog|move/.test(c.name.toLowerCase())) ??
+            gltf.animations[0];
+          this.walkAction = this.mixer.clipAction(clip);
+          this.walkAction.startAt(-Math.random()).play();
+        }
+      },
+      (err: unknown) => console.warn('[enemy] viking GLB failed to load, keeping capsule', err)
+    );
   }
 
   update(dt: number, now: number): void {
@@ -79,7 +124,8 @@ export class Enemy {
     const pos = this.object.position;
     const dir = target.clone().sub(pos).setY(0);
     const dist = dir.length();
-    const speed = now < this.slowUntil ? this.baseSpeed * 0.45 : this.baseSpeed;
+    const slowed = now < this.slowUntil;
+    const speed = slowed ? this.baseSpeed * 0.45 : this.baseSpeed;
     if (dist < 0.3) {
       this.waypoint++;
       if (this.waypoint >= PATH.length) {
@@ -91,12 +137,21 @@ export class Enemy {
       pos.addScaledVector(dir, speed * dt);
       this.object.rotation.y = Math.atan2(dir.x, dir.z);
     }
-    this.walkPhase += dt * speed * 2.2;
-    this.body.position.y = 0.85 * ENEMY_DEFS[this.type].scale + Math.abs(Math.sin(this.walkPhase)) * 0.12;
-    // tint blue while slowed
-    (this.body.material as THREE.MeshStandardMaterial).color.setHex(
-      now < this.slowUntil ? 0x4488cc : ENEMY_DEFS[this.type].color
-    );
+    if (this.mixer) {
+      if (this.walkAction) this.walkAction.timeScale = slowed ? 0.5 : 1;
+      this.mixer.update(dt);
+      // tint blue while slowed
+      for (const m of this.tintable) {
+        m.emissive.setHex(slowed ? 0x2244aa : 0x000000);
+        m.emissiveIntensity = slowed ? 0.6 : 0;
+      }
+    } else if (this.body) {
+      this.walkPhase += dt * speed * 2.2;
+      this.body.position.y = 0.85 * ENEMY_DEFS[this.type].scale + Math.abs(Math.sin(this.walkPhase)) * 0.12;
+      (this.body.material as THREE.MeshStandardMaterial).color.setHex(
+        slowed ? 0x4488cc : ENEMY_DEFS[this.type].color
+      );
+    }
   }
 
   damage(amount: number, byPlayer: boolean): void {
@@ -122,15 +177,15 @@ export class Enemy {
 
   dispose(scene: THREE.Scene): void {
     scene.remove(this.object);
-    this.object.traverse((o) => {
-      if (o instanceof THREE.Mesh) {
-        o.geometry.dispose();
-        (o.material as THREE.Material).dispose();
-      }
-      if (o instanceof THREE.Sprite) {
-        o.material.map?.dispose();
-        o.material.dispose();
-      }
-    });
+    this.mixer?.stopAllAction();
+    // GLB geometry is shared across clones (and the loader cache) — only
+    // dispose per-instance resources: placeholder body, cloned materials, bar.
+    if (this.body) {
+      this.body.geometry.dispose();
+      (this.body.material as THREE.Material).dispose();
+    }
+    for (const m of this.tintable) m.dispose();
+    this.bar.material.map?.dispose();
+    this.bar.material.dispose();
   }
 }

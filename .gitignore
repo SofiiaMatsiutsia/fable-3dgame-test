@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# uncompressed Meshy originals (60MB+ each) — compressed copies live in public/assets
+raw_assets/
+.DS_Store

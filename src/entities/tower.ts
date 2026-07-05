@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Enemy } from './enemy';
 import { Projectile } from './projectile';
+import { ASSETS, loadGlb } from '../core/assets';
 
 export type TowerType = 'arrow' | 'cannon' | 'frost';
 
@@ -37,8 +38,9 @@ export class Tower {
     );
     body.position.y = 1.2;
     body.castShadow = true;
+    // the orb stays even with the GLB — it marks the tower type and aims at targets
     this.head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.7, 10, 10),
+      new THREE.SphereGeometry(0.5, 10, 10),
       new THREE.MeshStandardMaterial({ color: def.color, emissive: def.color, emissiveIntensity: 0.35 })
     );
     this.head.position.y = 2.8;
@@ -46,6 +48,25 @@ export class Tower {
     this.object.add(body, this.head);
     this.object.position.copy(position);
     scene.add(this.object);
+
+    loadGlb(ASSETS.tower).then(
+      (gltf) => {
+        this.object.remove(body);
+        body.geometry.dispose();
+        (body.material as THREE.Material).dispose();
+        const model = gltf.scene.clone();
+        const box = new THREE.Box3().setFromObject(model);
+        const h = box.max.y - box.min.y;
+        if (h > 0.01) model.scale.setScalar(3.4 / h);
+        model.position.y = -box.min.y * (h > 0.01 ? 3.4 / h : 1);
+        model.traverse((o) => {
+          if (o instanceof THREE.Mesh) o.castShadow = true;
+        });
+        this.object.add(model);
+        this.head.position.y = 3.9;
+      },
+      () => {} // keep cylinder fallback
+    );
   }
 
   update(dt: number, _now: number, enemies: Enemy[], projectiles: Projectile[], scene: THREE.Scene): void {
@@ -67,7 +88,7 @@ export class Tower {
     if (!best) return;
 
     this.cooldownLeft = def.cooldown;
-    this.muzzle.copy(this.object.position).setY(2.8);
+    this.muzzle.copy(this.object.position).setY(this.head.position.y);
     projectiles.push(
       new Projectile(
         {

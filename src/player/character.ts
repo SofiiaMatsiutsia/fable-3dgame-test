@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { ASSETS, loadGlb } from '../core/assets';
 
-// Player visual: tries to load /character.glb (drop your rigged export into public/).
-// Falls back to a placeholder robot. If the GLB has clips fuzzy-matching
-// idle/run|walk/attack|punch|swing, they drive the AnimationMixer; otherwise
-// procedural bob + arm swing.
+// Player visual: loads the Emerald Sprite Fox (Meshy AI export with merged
+// animation clips). Falls back to a placeholder robot if the GLB fails.
+// Clips fuzzy-matching idle/run|walk/attack|punch|swing drive the
+// AnimationMixer; otherwise procedural bob + arm swing.
 
 export type ClipName = 'idle' | 'run' | 'attack';
 
@@ -56,8 +56,7 @@ export class Character {
   }
 
   private tryLoadGlb(): void {
-    new GLTFLoader().load(
-      '/character.glb',
+    loadGlb(ASSETS.hero).then(
       (gltf) => {
         if (this.placeholder) {
           this.object.remove(this.placeholder);
@@ -68,8 +67,9 @@ export class Character {
         model.traverse((o) => {
           if (o instanceof THREE.Mesh) o.castShadow = true;
         });
-        // normalize height to ~2 units
-        const box = new THREE.Box3().setFromObject(model);
+        // normalize height to ~2 units (precise=true → bounds through bone transforms)
+        model.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(model, true);
         const h = box.max.y - box.min.y;
         if (h > 0.01) model.scale.setScalar(2 / h);
         this.object.add(model);
@@ -86,10 +86,9 @@ export class Character {
           this.actions.attack.setLoop(THREE.LoopOnce, 1);
           this.actions.idle.play();
         }
-        console.info('[character] loaded character.glb', gltf.animations.map((a) => a.name));
+        console.info('[character] loaded hero fox', gltf.animations.map((a) => a.name));
       },
-      undefined,
-      () => console.info('[character] no character.glb found, using placeholder')
+      (err: unknown) => console.warn('[character] hero GLB failed to load, using placeholder', err)
     );
   }
 

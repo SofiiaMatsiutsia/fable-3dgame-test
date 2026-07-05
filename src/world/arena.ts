@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ASSETS, loadGlb } from '../core/assets';
 
 export const ARENA_SIZE = 70;
 
@@ -72,7 +73,7 @@ export function buildArena(scene: THREE.Scene): { plots: Plot[] } {
     scene.add(seg);
   }
 
-  // Base: a little keep
+  // Base: thatched cottage GLB (placeholder keep until it loads)
   const base = new THREE.Group();
   const keep = new THREE.Mesh(
     new THREE.CylinderGeometry(2.2, 2.6, 4, 8),
@@ -81,15 +82,31 @@ export function buildArena(scene: THREE.Scene): { plots: Plot[] } {
   keep.position.y = 2;
   keep.castShadow = true;
   base.add(keep);
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(2.6, 2, 8),
-    new THREE.MeshStandardMaterial({ color: 0xaa3344 })
-  );
-  roof.position.y = 5;
-  roof.castShadow = true;
-  base.add(roof);
   base.position.copy(BASE_POS);
   scene.add(base);
+  loadGlb(ASSETS.cottage).then(
+    (gltf) => {
+      base.remove(keep);
+      keep.geometry.dispose();
+      (keep.material as THREE.Material).dispose();
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const h = box.max.y - box.min.y;
+      const k = h > 0.01 ? 7 / h : 1;
+      model.scale.setScalar(k);
+      model.position.y = -box.min.y * k;
+      // face the incoming path
+      model.rotation.y = Math.PI / 2;
+      model.traverse((o) => {
+        if (o instanceof THREE.Mesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+      base.add(model);
+    },
+    () => {} // keep placeholder
+  );
 
   // Spawn portal marker at path start
   const portal = new THREE.Mesh(
