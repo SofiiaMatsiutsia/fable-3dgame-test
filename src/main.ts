@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
 import { buildArena, type Plot } from './world/arena';
+import { buildGrass, updateGrass } from './world/grass';
 import { Spawner } from './entities/spawner';
 import { Tower, TOWER_DEFS, type TowerType } from './entities/tower';
 import { Projectile } from './entities/projectile';
@@ -16,6 +17,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
+// SeedThree grade: filmic response — highlights roll off, greens stay soft.
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -29,6 +33,7 @@ addEventListener('resize', () => {
 });
 
 const { plots } = buildArena(scene);
+buildGrass(scene);
 const spawner = new Spawner(scene);
 const towers: Tower[] = [];
 const projectiles: Projectile[] = [];
@@ -74,7 +79,9 @@ const STEP = 1 / 60;
 function tick(): void {
   requestAnimationFrame(tick);
   timer.update();
-  accumulator += Math.min(timer.getDelta(), 0.1);
+  const frameDt = Math.min(timer.getDelta(), 0.1);
+  updateGrass(frameDt);
+  accumulator += frameDt;
   const now = performance.now();
 
   while (accumulator >= STEP) {
