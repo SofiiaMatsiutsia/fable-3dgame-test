@@ -21,6 +21,12 @@ canvas { display: block; }
 }
 #wave-btn:hover { background: #e74c3c; }
 
+@media (max-width: 620px) {
+  #stats { font-size: 16px; gap: 12px; padding: 8px 12px; }
+  #wave-btn { top: 64px; right: auto; left: 12px; }
+  #msg { top: 120px; }
+}
+
 #msg {
   position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
   font-size: 20px; font-weight: 600; text-shadow: 0 2px 4px #000;

@@ -14,7 +14,6 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -65,13 +64,14 @@ Object.assign(window as unknown as Record<string, unknown>, {
   __game: { state, spawner, towers, projectiles, plots, player, events, buildTower },
 });
 
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
 let accumulator = 0;
 const STEP = 1 / 60;
 
 function tick(): void {
   requestAnimationFrame(tick);
-  accumulator += Math.min(clock.getDelta(), 0.1);
+  timer.update();
+  accumulator += Math.min(timer.getDelta(), 0.1);
   const now = performance.now();
 
   while (accumulator >= STEP) {

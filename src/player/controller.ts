@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Character } from './character';
 import type { Enemy } from '../entities/enemy';
 import { events } from '../core/events';
+import { state } from '../core/state';
 import { ARENA_SIZE } from '../world/arena';
 
 const MOVE_SPEED = 9;
@@ -36,7 +37,7 @@ export class PlayerController {
   }
 
   private attack(): void {
-    if (this.cooldown > 0) return;
+    if (this.cooldown > 0 || state.phase === 'won' || state.phase === 'lost') return;
     this.cooldown = ATTACK_COOLDOWN;
     this.character.playAttack();
     let hits = 0;
