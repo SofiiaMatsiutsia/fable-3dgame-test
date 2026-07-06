@@ -3,8 +3,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { PATH } from '../world/arena';
 import { events } from '../core/events';
 import { state } from '../core/state';
-import { ASSETS, loadGlb } from '../core/assets';
-import { sharpenTextures } from '../player/character';
+import { ASSETS, loadGlb, prepareCharacterMaterial } from '../core/assets';
 import { settings } from '../core/settings';
 
 export type EnemyType = 'grunt' | 'brute';
@@ -105,7 +104,7 @@ export class Enemy {
             // clone materials so the slow-tint doesn't leak across instances
             const mat = (o.material as THREE.Material).clone();
             o.material = mat;
-            sharpenTextures(mat);
+            prepareCharacterMaterial(mat);
             if (mat instanceof THREE.MeshStandardMaterial) this.tintable.push(mat);
           }
         });
