@@ -16,6 +16,8 @@ export class Hud {
   private selectedPlot: Plot | null = null;
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
+  private dragStart: { x: number; y: number } | null = null;
+  private static readonly CLICK_DRAG_THRESHOLD = 6;
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -34,7 +36,7 @@ export class Hud {
         <button id="wave-btn">▶ Start Wave 1</button>
         <div id="msg"></div>
         <div id="shop" hidden></div>
-        <div id="help">WASD move · Space attack · click a grey pad to build</div>
+        <div id="help">WASD move · Space attack · drag to look around · scroll to zoom · click a grey pad to build</div>
         <div id="overlay" hidden></div>
       </div>`
     );
@@ -52,7 +54,18 @@ export class Hud {
     });
 
     this.buildShop();
-    window.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    window.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      if ((e.target as HTMLElement).closest('#hud button, #shop')) return;
+      this.dragStart = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('pointerup', (e) => {
+      if (e.button !== 0 || !this.dragStart) return;
+      const { x, y } = this.dragStart;
+      this.dragStart = null;
+      if (Math.hypot(e.clientX - x, e.clientY - y) > Hud.CLICK_DRAG_THRESHOLD) return; // was a camera-orbit drag
+      this.handleBuildClick(e);
+    });
 
     events.on('GOLD_CHANGED', ({ gold }) => {
       this.goldEl.textContent = String(gold);
@@ -120,7 +133,7 @@ export class Hud {
     });
   }
 
-  private onPointerDown(e: PointerEvent): void {
+  private handleBuildClick(e: PointerEvent): void {
     if ((e.target as HTMLElement).closest('#hud button, #shop')) return;
     if (state.phase === 'won' || state.phase === 'lost') return;
     this.pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
