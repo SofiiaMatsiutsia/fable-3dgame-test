@@ -116,7 +116,7 @@ export function grassWindMaterial(map: THREE.Texture): THREE.MeshStandardMateria
   return mat;
 }
 
-export function buildGrass(scene: THREE.Scene): void {
+export function buildGrass(scene: THREE.Scene): THREE.InstancedMesh[] {
   const rng = mulberry32(1234);
   const tex = new THREE.TextureLoader().load('/assets/seedthree/grass_tuft.png');
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -181,10 +181,13 @@ export function buildGrass(scene: THREE.Scene): void {
     v.mesh.instanceMatrix.needsUpdate = true;
     scene.add(v.mesh);
   }
+  return variants.map((v) => v.mesh);
 }
 
-export function updateGrass(dt: number): void {
+export function updateGrass(dt: number, windStrength = 0.55, windSpeed = 1): void {
   windUniforms.uTime.value += dt;
+  windUniforms.uWindStrength.value = windStrength;
+  windUniforms.uWindSpeed.value = windSpeed;
 }
 
 function mulberry32(seed: number): () => number {

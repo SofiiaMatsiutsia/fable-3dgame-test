@@ -17,7 +17,7 @@ import { distToPath, PLOT_POSITIONS } from './arena';
 import { heightAt, rocknessAt, TERRAIN_R } from './terrain';
 
 const TEMPLATE_COUNT = 4;
-const OAK_COUNT = 42;
+const OAK_COUNT = 52;
 const PATH_CLEARANCE = 7;
 const PLOT_CLEARANCE = 5;
 const ARENA_EDGE = 46;

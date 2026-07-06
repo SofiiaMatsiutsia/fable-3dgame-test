@@ -18,6 +18,12 @@ const TRUNK_PALE = new THREE.MeshStandardMaterial({ color: 0xb8b2a4, roughness: 
 const GREENS = [0x3d5c3d, 0x4a7040, 0x5a7a3a, 0x6d8a4a, 0x38684c].map(
   (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1 })
 );
+// index-matched darker variants for conifer tops (shared, no per-tree clones)
+const GREENS_DARK = GREENS.map((m) => {
+  const d = m.clone();
+  d.color.multiplyScalar(0.72);
+  return d;
+});
 const AUTUMN = [0x9a7a30, 0xa8642e].map(
   (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1 })
 );
@@ -35,64 +41,51 @@ function leafMat(rng: () => number): THREE.MeshStandardMaterial {
 
 function conifer(rng: () => number): THREE.Group {
   const g = new THREE.Group();
-  const h = 2.6 + rng() * 2.4;
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.28, h * 0.35, 6), TRUNK);
-  trunk.position.y = h * 0.175;
+  const h = 3.2 + rng() * 3;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.26, h * 0.4, 6), TRUNK);
+  trunk.position.y = h * 0.2;
   g.add(trunk);
-  const mat = leafMat(rng);
-  const tiers = 2 + Math.floor(rng() * 2);
+  // dense tier stack, darker toward the top — reads as a real fir silhouette
+  const gi = Math.floor(rng() * GREENS.length);
+  const base = GREENS[gi];
+  const dark = GREENS_DARK[gi];
+  const tiers = 4 + Math.floor(rng() * 3);
   for (let i = 0; i < tiers; i++) {
-    const t = i / tiers;
-    const r = (1.3 - t * 0.75) * (0.8 + rng() * 0.4);
-    const th = h * (0.55 - t * 0.12);
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, th, 7), mat);
-    cone.position.y = h * 0.3 + t * h * 0.55 + th * 0.3;
+    const t = i / (tiers - 1);
+    const r = (1.5 - t * 1.05) * (0.85 + rng() * 0.3);
+    const th = (h * 0.62) / tiers + h * 0.12;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, th, 8), t > 0.55 ? dark : base);
+    cone.position.y = h * 0.28 + t * h * 0.62;
     cone.rotation.y = rng() * Math.PI;
+    cone.rotation.z = (rng() - 0.5) * 0.05;
     g.add(cone);
-  }
-  return g;
-}
-
-function broadleaf(rng: () => number): THREE.Group {
-  const g = new THREE.Group();
-  const h = 1.6 + rng() * 1.4;
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, h, 6), TRUNK);
-  trunk.position.y = h / 2;
-  g.add(trunk);
-  const mat = leafMat(rng);
-  const blobs = 2 + Math.floor(rng() * 3);
-  for (let i = 0; i < blobs; i++) {
-    const r = 0.8 + rng() * 0.7;
-    const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), mat);
-    blob.position.set(
-      (rng() - 0.5) * 1.3,
-      h + r * 0.5 + rng() * 0.8,
-      (rng() - 0.5) * 1.3
-    );
-    blob.rotation.set(rng() * Math.PI, rng() * Math.PI, 0);
-    g.add(blob);
   }
   return g;
 }
 
 function birch(rng: () => number): THREE.Group {
   const g = new THREE.Group();
-  const h = 3 + rng() * 1.8;
+  const h = 3.2 + rng() * 2;
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, h, 5), TRUNK_PALE);
   trunk.position.y = h / 2;
   g.add(trunk);
+  // fuller two-blob crown with a smoother silhouette (subdiv 1, not 0)
   const mat = leafMat(rng);
-  const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9 + rng() * 0.5, 0), mat);
-  crown.scale.y = 1.3 + rng() * 0.5;
-  crown.position.y = h + 0.4;
-  crown.rotation.y = rng() * Math.PI;
-  g.add(crown);
+  const lower = new THREE.Mesh(new THREE.IcosahedronGeometry(1.0 + rng() * 0.5, 1), mat);
+  lower.scale.y = 1.2 + rng() * 0.3;
+  lower.position.y = h * 0.9;
+  lower.rotation.y = rng() * Math.PI;
+  const upper = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7 + rng() * 0.35, 1), mat);
+  upper.scale.y = 1.25;
+  upper.position.set((rng() - 0.5) * 0.5, h * 0.9 + 1.1, (rng() - 0.5) * 0.5);
+  g.add(lower, upper);
   return g;
 }
 
 // Oaks (world/oak.ts) own the arena and near ring; these cheaper archetypes
-// fill the distant hills — conifer-dominated with birch accents.
-const ARCHETYPES = [conifer, conifer, conifer, broadleaf, birch];
+// fill the distant hills — fir-dominated with birch accents. (The old
+// icosahedron "broadleaf" blobs are gone — they read as rocks on sticks.)
+const ARCHETYPES = [conifer, conifer, conifer, birch];
 
 // -- scatter ------------------------------------------------------------------
 
