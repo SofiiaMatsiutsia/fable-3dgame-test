@@ -10,6 +10,17 @@ export const DEFAULTS = {
   towerScale: 1,
   enemyScale: 1,
   enemySpeed: 1, // multiplier on each enemy type's base speed
+  // sun & light
+  sunElevation: 48, // degrees above horizon
+  sunAzimuth: 55, // degrees around the compass
+  sunIntensity: 3.0,
+  ambientIntensity: 1.2, // hemisphere sky/ground fill
+  exposure: 1.3,
+  shadows: true,
+  grassShadows: false, // tufts casting shadows looks great, costs fill rate
+  // wind
+  windStrength: 0.55,
+  windSpeed: 1.0,
 };
 
 export type Settings = typeof DEFAULTS;
@@ -21,7 +32,11 @@ function load(): Partial<Settings> {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>;
     const out: Partial<Settings> = {};
     for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
-      if (typeof raw[key] === 'number' && Number.isFinite(raw[key])) out[key] = raw[key] as number;
+      const want = typeof DEFAULTS[key];
+      const got = raw[key];
+      if (typeof got !== want) continue;
+      if (typeof got === 'number' && !Number.isFinite(got)) continue;
+      (out as Record<string, unknown>)[key] = got;
     }
     return out;
   } catch {

@@ -32,8 +32,25 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-const { plots } = buildArena(scene);
-buildGrass(scene);
+const { plots, lights } = buildArena(scene);
+const grassMeshes = buildGrass(scene);
+
+// Sun & light settings applied live (cheap flag/vector writes, safe per frame).
+function applyLighting(): void {
+  const el = (settings.sunElevation * Math.PI) / 180;
+  const az = (settings.sunAzimuth * Math.PI) / 180;
+  const r = 90;
+  lights.sun.position.set(
+    Math.cos(el) * Math.cos(az) * r,
+    Math.max(2, Math.sin(el) * r),
+    Math.cos(el) * Math.sin(az) * r
+  );
+  lights.sun.intensity = settings.sunIntensity;
+  lights.sun.castShadow = settings.shadows;
+  lights.hemi.intensity = settings.ambientIntensity;
+  renderer.toneMappingExposure = settings.exposure;
+  for (const m of grassMeshes) m.castShadow = settings.grassShadows;
+}
 const spawner = new Spawner(scene);
 const towers: Tower[] = [];
 const projectiles: Projectile[] = [];
@@ -80,7 +97,8 @@ function tick(): void {
   requestAnimationFrame(tick);
   timer.update();
   const frameDt = Math.min(timer.getDelta(), 0.1);
-  updateGrass(frameDt);
+  updateGrass(frameDt, settings.windStrength, settings.windSpeed);
+  applyLighting();
   accumulator += frameDt;
   const now = performance.now();
 

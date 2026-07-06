@@ -38,23 +38,33 @@ export interface Plot {
   occupied: boolean;
 }
 
-export function buildArena(scene: THREE.Scene): { plots: Plot[] } {
+export interface ArenaLights {
+  sun: THREE.DirectionalLight;
+  hemi: THREE.HemisphereLight;
+}
+
+export function buildArena(scene: THREE.Scene): { plots: Plot[]; lights: ArenaLights } {
   // SeedThree temperate biome: pale warm horizon, soft blue zenith, matching fog.
   scene.background = new THREE.Color(0xcfd8e6);
   scene.fog = new THREE.Fog(0xcfd8e6, 95, 300); // SeedThree main.js haze
   scene.add(buildSkyDome());
 
   // SeedThree lighting: sky-blue/earth hemisphere fill + warm late-afternoon sun.
+  // Both are returned so the settings panel can steer them live.
   const hemi = new THREE.HemisphereLight(0x9fc0ff, 0x3a4a2a, 1.2);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff2e0, 3.0);
   sun.position.set(30, 50, 20);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -50;
-  sun.shadow.camera.right = 50;
-  sun.shadow.camera.top = 50;
-  sun.shadow.camera.bottom = -50;
+  // frustum covers the hills too (was ±50 → everything past the arena rim was
+  // flat and shadowless — "the sun doesn't work"); 4096 map keeps arena crisp
+  sun.shadow.mapSize.set(4096, 4096);
+  sun.shadow.camera.left = -110;
+  sun.shadow.camera.right = 110;
+  sun.shadow.camera.top = 110;
+  sun.shadow.camera.bottom = -110;
+  sun.shadow.camera.far = 400;
+  sun.shadow.bias = -0.0004;
   scene.add(sun);
 
   // SeedThree-style terrain ring: flat playfield, rocky hills around the rim.
@@ -135,7 +145,7 @@ export function buildArena(scene: THREE.Scene): { plots: Plot[] } {
   scatterOaks(scene, mulberry32(21));
   scatterTrees(scene, mulberry32(7));
 
-  return { plots };
+  return { plots, lights: { sun, hemi } };
 }
 
 // Gradient sky dome, vertex-coloured horizon→zenith (SeedThree environment.js).
