@@ -11,11 +11,26 @@ const ATTACK_ARC_COS = Math.cos((110 * Math.PI) / 180 / 2); // ~110° frontal ar
 const ATTACK_DAMAGE = 18;
 const ATTACK_COOLDOWN = 0.45;
 
+// Left-drag orbit: yaw is unbounded, pitch is clamped so the camera can't
+// flip over the top or dip below the ground plane.
+const MOUSE_SENSITIVITY = 0.006;
+const MIN_PITCH = THREE.MathUtils.degToRad(8);
+const MAX_PITCH = THREE.MathUtils.degToRad(88);
+
+// Scroll-wheel zoom: multiplies the height/distance sliders' baseline radius.
+const ZOOM_SPEED = 0.0012;
+const MIN_ZOOM = 0.35;
+const MAX_ZOOM = 2.5;
+
 export class PlayerController {
   readonly character: Character;
   private keys = new Set<string>();
   private cooldown = 0;
   private facing = new THREE.Vector3(0, 0, -1);
+  private camYawOffset = 0;
+  private camPitchOffset = 0;
+  private camZoom = 1;
+  private dragging = false;
 
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private getEnemies: () => Enemy[]) {
     this.character = new Character(scene);
@@ -30,7 +45,36 @@ export class PlayerController {
       if (e.code === 'Space') this.attack();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    window.addEventListener('blur', () => this.keys.clear());
+    window.addEventListener('blur', () => {
+      this.keys.clear();
+      this.dragging = false;
+    });
+
+    // Left-mouse-button drag orbits the camera. Hud distinguishes a plain
+    // click (build a tower) from a drag (orbit) by movement distance.
+    window.addEventListener('pointerdown', (e) => {
+      if (e.button === 0) this.dragging = true;
+    });
+    window.addEventListener('pointerup', (e) => {
+      if (e.button === 0) this.dragging = false;
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (!this.dragging) return;
+      this.camYawOffset -= e.movementX * MOUSE_SENSITIVITY;
+      this.camPitchOffset -= e.movementY * MOUSE_SENSITIVITY;
+    });
+
+    // Mouse wheel zooms the camera in/out; ignored over the settings panel
+    // so its scrollable lists still work normally.
+    window.addEventListener(
+      'wheel',
+      (e) => {
+        if (!(e.target instanceof HTMLCanvasElement)) return;
+        e.preventDefault();
+        this.camZoom = THREE.MathUtils.clamp(this.camZoom * Math.pow(1 + ZOOM_SPEED, e.deltaY), MIN_ZOOM, MAX_ZOOM);
+      },
+      { passive: false }
+    );
   }
 
   private attack(): void {
@@ -77,14 +121,21 @@ export class PlayerController {
     this.character.object.scale.setScalar(settings.heroScale);
     this.character.update(dt);
 
-    // camera follow (smoothed); fixed-angle chase camera, live-tunable via the settings panel
+    // camera follow (smoothed); height/distance sliders set the baseline
+    // angle+zoom, left-mouse-drag orbits yaw/pitch on top of that baseline.
     if (this.camera.fov !== settings.camFov) {
       this.camera.fov = settings.camFov;
       this.camera.updateProjectionMatrix();
     }
+    const radius = Math.hypot(settings.camDistance, settings.camHeight) * this.camZoom;
+    const basePitch = Math.atan2(settings.camHeight, settings.camDistance);
+    const pitch = THREE.MathUtils.clamp(basePitch + this.camPitchOffset, MIN_PITCH, MAX_PITCH);
+    const yaw = this.camYawOffset;
+    const horizontal = radius * Math.cos(pitch);
     const targetCam = this.character.object.position.clone();
-    targetCam.y += settings.camHeight;
-    targetCam.z += settings.camDistance;
+    targetCam.x += horizontal * Math.sin(yaw);
+    targetCam.y += radius * Math.sin(pitch);
+    targetCam.z += horizontal * Math.cos(yaw);
     this.camera.position.lerp(targetCam, 1 - Math.exp(-6 * dt));
     this.camera.lookAt(this.character.object.position.clone().setY(1));
   }
