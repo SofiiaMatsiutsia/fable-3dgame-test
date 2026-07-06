@@ -71,10 +71,12 @@ export function buildTerrain(scene: THREE.Scene): THREE.Mesh {
 
   // Vertex-painted grass↔rock: meadow greens with fbm mottling, blending into
   // SeedThree's dark slate rock on the hills, lighter scree flecks on top.
-  const meadow = new THREE.Color(0x527f2f);
-  const meadowLight = new THREE.Color(0x7aa848);
-  const rock = new THREE.Color(0x3a4257);
-  const rockLight = new THREE.Color(0x59637d);
+  // near-neutral multipliers now that a grass texture carries the base color
+  // (full-strength greens × green texture would double-darken)
+  const meadow = new THREE.Color(0xa8c48c);
+  const meadowLight = new THREE.Color(0xdcecc4);
+  const rock = new THREE.Color(0x4a5470);
+  const rockLight = new THREE.Color(0x707c9a);
   const tmp = new THREE.Color();
   const tmp2 = new THREE.Color();
   for (let i = 0; i < p.count; i++) {
@@ -93,9 +95,17 @@ export function buildTerrain(scene: THREE.Scene): THREE.Mesh {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.computeVertexNormals();
 
+  // SeedThree ground: tiled grass albedo modulated by the vertex-painted
+  // grass↔rock blend — the texture supplies blade detail, the vertex colors
+  // keep the biome painting.
+  const grassTex = new THREE.TextureLoader().load('/assets/seedthree/grass_albedo.jpg');
+  grassTex.colorSpace = THREE.SRGBColorSpace;
+  grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+  grassTex.repeat.setScalar((TERRAIN_R * 2) / 7); // ~7 m per tile
+  grassTex.anisotropy = 8;
   const mesh = new THREE.Mesh(
     geo,
-    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 })
+    new THREE.MeshStandardMaterial({ map: grassTex, vertexColors: true, roughness: 1, metalness: 0 })
   );
   mesh.receiveShadow = true;
   scene.add(mesh);
