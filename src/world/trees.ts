@@ -90,7 +90,9 @@ function birch(rng: () => number): THREE.Group {
   return g;
 }
 
-const ARCHETYPES = [conifer, conifer, broadleaf, broadleaf, birch]; // birches rarer
+// Oaks (world/oak.ts) own the arena and near ring; these cheaper archetypes
+// fill the distant hills — conifer-dominated with birch accents.
+const ARCHETYPES = [conifer, conifer, conifer, broadleaf, birch];
 
 // -- scatter ------------------------------------------------------------------
 
@@ -105,7 +107,7 @@ export function scatterTrees(scene: THREE.Scene, rng: () => number): void {
     if (distToPath(p) < PATH_CLEARANCE) continue;
     if (PLOT_POSITIONS.some((q) => q.distanceTo(p) < PLOT_CLEARANCE)) continue;
     const inArena = Math.max(Math.abs(x), Math.abs(z)) < ARENA_EDGE;
-    if (inArena && rng() > 0.22) continue; // keep the playfield readable
+    if (inArena) continue; // the playfield belongs to the instanced oaks
     if (rocknessAt(x, z) > 0.55) continue; // no trees on bare rock
 
     const tree = pick(ARCHETYPES, rng)(rng);

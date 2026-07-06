@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ASSETS, loadGlb } from '../core/assets';
 import { buildTerrain } from './terrain';
 import { scatterTrees } from './trees';
+import { scatterOaks } from './oak';
 
 export const ARENA_SIZE = 70;
 
@@ -39,14 +40,14 @@ export interface Plot {
 
 export function buildArena(scene: THREE.Scene): { plots: Plot[] } {
   // SeedThree temperate biome: pale warm horizon, soft blue zenith, matching fog.
-  scene.background = new THREE.Color(0xc6dcec);
-  scene.fog = new THREE.Fog(0xc6dcec, 90, 220);
+  scene.background = new THREE.Color(0xcfd8e6);
+  scene.fog = new THREE.Fog(0xcfd8e6, 95, 300); // SeedThree main.js haze
   scene.add(buildSkyDome());
 
   // SeedThree lighting: sky-blue/earth hemisphere fill + warm late-afternoon sun.
   const hemi = new THREE.HemisphereLight(0x9fc0ff, 0x3a4a2a, 1.2);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff2e0, 2.8);
+  const sun = new THREE.DirectionalLight(0xfff2e0, 3.0);
   sun.position.set(30, 50, 20);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -129,8 +130,9 @@ export function buildArena(scene: THREE.Scene): { plots: Plot[] } {
     return { position, mesh, occupied: false };
   });
 
-  // Randomized décor trees: a few inside the arena, many more over the hills,
-  // seeking meadow pockets (low rockness) like SeedThree's forest scatter.
+  // Décor: real SeedThree-style oaks in and around the arena, cheaper
+  // conifer/birch archetypes over the distant hills.
+  scatterOaks(scene, mulberry32(21));
   scatterTrees(scene, mulberry32(7));
 
   return { plots };

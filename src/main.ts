@@ -19,7 +19,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 // SeedThree grade: filmic response — highlights roll off, greens stay soft.
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = 1.3; // SeedThree/ez-tree grade: brighter sells the meadow
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
