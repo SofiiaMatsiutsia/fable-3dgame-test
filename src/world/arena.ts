@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ASSETS, loadGlb } from '../core/assets';
-import { buildTerrain, heightAt, rocknessAt, TERRAIN_R } from './terrain';
+import { buildTerrain } from './terrain';
+import { scatterTrees } from './trees';
 
 export const ARENA_SIZE = 70;
 
@@ -128,37 +129,9 @@ export function buildArena(scene: THREE.Scene): { plots: Plot[] } {
     return { position, mesh, occupied: false };
   });
 
-  // Scatter decorative rocks/trees away from path and plots
-  const decoMat = new THREE.MeshStandardMaterial({ color: 0x3d5c3d, roughness: 1 });
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5b4432, roughness: 1 });
-  const decoMat2 = new THREE.MeshStandardMaterial({ color: 0x5a7a3a, roughness: 1 });
-  const rng = mulberry32(7);
-  // Trees: a few inside the arena, many more rolling over the hills — they seek
-  // the meadow pockets (low rockness), like SeedThree's forest scatter.
-  for (let i = 0; i < 160; i++) {
-    const x = (rng() - 0.5) * 2 * TERRAIN_R * 0.85;
-    const z = (rng() - 0.5) * 2 * TERRAIN_R * 0.85;
-    const p = new THREE.Vector3(x, 0, z);
-    if (distToPath(p) < 6 || PLOT_POSITIONS.some((q) => q.distanceTo(p) < 4)) continue;
-    const inArena = Math.max(Math.abs(x), Math.abs(z)) < 46;
-    if (inArena && rng() > 0.25) continue; // keep the playfield sparse
-    if (rocknessAt(x, z) > 0.55) continue; // trees avoid bare rock
-    const s = 0.8 + rng() * (inArena ? 0.6 : 1.4);
-    const tree = new THREE.Group();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 1.5), trunkMat);
-    trunk.position.y = 0.75;
-    trunk.castShadow = true;
-    const crown = new THREE.Mesh(
-      new THREE.ConeGeometry(1.2 + rng(), 2.5 + rng() * 2, 7),
-      rng() < 0.5 ? decoMat : decoMat2
-    );
-    crown.position.y = 2.8;
-    crown.castShadow = true;
-    tree.add(trunk, crown);
-    tree.scale.setScalar(s);
-    tree.position.set(x, heightAt(x, z) - 0.1, z);
-    scene.add(tree);
-  }
+  // Randomized décor trees: a few inside the arena, many more over the hills,
+  // seeking meadow pockets (low rockness) like SeedThree's forest scatter.
+  scatterTrees(scene, mulberry32(7));
 
   return { plots };
 }
