@@ -15,6 +15,7 @@ import { Rng } from './vendor/rng';
 import { windUniforms } from './grass';
 import { distToPath, PLOT_POSITIONS } from './arena';
 import { heightAt, rocknessAt, TERRAIN_R } from './terrain';
+import { asset } from '../core/assets';
 
 const TEMPLATE_COUNT = 4;
 const OAK_COUNT = 52;
@@ -172,7 +173,7 @@ function bakeFoliage(terminalStems: Stem[], cfg: FoliageCfg, rng: Rng): THREE.Bu
 
 function leafMaterial(): THREE.MeshStandardMaterial {
   const loader = new THREE.TextureLoader();
-  const albedo = loader.load('/assets/seedthree/white_oak_single_albedo.png');
+  const albedo = loader.load(asset('assets/seedthree/white_oak_single_albedo.png'));
   albedo.colorSpace = THREE.SRGBColorSpace;
   albedo.anisotropy = 4;
   const mat = new THREE.MeshStandardMaterial({
@@ -222,10 +223,10 @@ function leafMaterial(): THREE.MeshStandardMaterial {
 
 function barkMaterial(): THREE.MeshStandardMaterial {
   const loader = new THREE.TextureLoader();
-  const albedo = loader.load('/assets/seedthree/white_oak_albedo.jpg');
+  const albedo = loader.load(asset('assets/seedthree/white_oak_albedo.jpg'));
   albedo.colorSpace = THREE.SRGBColorSpace;
   albedo.wrapS = albedo.wrapT = THREE.RepeatWrapping;
-  const normal = loader.load('/assets/seedthree/white_oak_normal.jpg');
+  const normal = loader.load(asset('assets/seedthree/white_oak_normal.jpg'));
   normal.wrapS = normal.wrapT = THREE.RepeatWrapping;
   return new THREE.MeshStandardMaterial({
     map: albedo,

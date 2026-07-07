@@ -5,6 +5,7 @@
 // placement — one noise, all systems agreeing (SeedThree's core idea).
 
 import * as THREE from 'three';
+import { asset } from '../core/assets';
 
 // ---- deterministic value noise (SeedThree environment.js) ------------------
 function hash2(ix: number, iz: number, seed: number): number {
@@ -98,7 +99,7 @@ export function buildTerrain(scene: THREE.Scene): THREE.Mesh {
   // SeedThree ground: tiled grass albedo modulated by the vertex-painted
   // grass↔rock blend — the texture supplies blade detail, the vertex colors
   // keep the biome painting.
-  const grassTex = new THREE.TextureLoader().load('/assets/seedthree/grass_albedo.jpg');
+  const grassTex = new THREE.TextureLoader().load(asset('assets/seedthree/grass_albedo.jpg'));
   grassTex.colorSpace = THREE.SRGBColorSpace;
   grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
   grassTex.repeat.setScalar((TERRAIN_R * 2) / 7); // ~7 m per tile

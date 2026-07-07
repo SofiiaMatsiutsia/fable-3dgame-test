@@ -2,11 +2,18 @@ import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
+// Resolves a public/ asset URL against Vite's configured base path so the
+// same code works both at the dev root ("/") and under a GitHub Pages
+// subpath ("/fable-3dgame-test/"). BASE_URL always ends in a slash.
+export function asset(path: string): string {
+  return import.meta.env.BASE_URL + path.replace(/^\/+/, '');
+}
+
 export const ASSETS = {
-  hero: '/assets/hero/Meshy_AI_Emerald_Sprite_Fox_biped_Meshy_AI_Meshy_Merged_Animations.glb',
-  enemy: '/assets/enemy/Meshy_AI_Mossy_Viking_Madness_biped_Meshy_AI_Meshy_Merged_Animations.glb',
-  tower: '/assets/tower.glb',
-  cottage: '/assets/cottage.glb',
+  hero: asset('assets/hero/Meshy_AI_Emerald_Sprite_Fox_biped_Meshy_AI_Meshy_Merged_Animations.glb'),
+  enemy: asset('assets/enemy/Meshy_AI_Mossy_Viking_Madness_biped_Meshy_AI_Meshy_Merged_Animations.glb'),
+  tower: asset('assets/tower.glb'),
+  cottage: asset('assets/cottage.glb'),
 } as const;
 
 const loader = new GLTFLoader();

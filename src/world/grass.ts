@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { PLOT_POSITIONS, distToPath } from './arena';
 import { heightAt, rocknessAt, TERRAIN_R } from './terrain';
+import { asset } from '../core/assets';
 
 const TUFT_COUNT = 16000;
 const PATH_CLEARANCE = 4.5; // road half-width 2 + margin
@@ -118,7 +119,7 @@ export function grassWindMaterial(map: THREE.Texture): THREE.MeshStandardMateria
 
 export function buildGrass(scene: THREE.Scene): THREE.InstancedMesh[] {
   const rng = mulberry32(1234);
-  const tex = new THREE.TextureLoader().load('/assets/seedthree/grass_tuft.png');
+  const tex = new THREE.TextureLoader().load(asset('assets/seedthree/grass_tuft.png'));
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const mat = grassWindMaterial(tex);
