@@ -73,7 +73,15 @@ export class PlayerController {
         return;
       }
       this.camYawOffset -= e.movementX * MOUSE_SENSITIVITY;
-      this.camPitchOffset -= e.movementY * MOUSE_SENSITIVITY;
+      // Clamp the offset itself, not just the final pitch: otherwise it keeps
+      // accumulating past the limit and the camera goes dead until you drag
+      // all the way back through the overshoot.
+      const basePitch = Math.atan2(settings.camHeight, settings.camDistance);
+      this.camPitchOffset = THREE.MathUtils.clamp(
+        this.camPitchOffset - e.movementY * MOUSE_SENSITIVITY,
+        MIN_PITCH - basePitch,
+        MAX_PITCH - basePitch
+      );
     });
 
     // Mouse wheel zooms the camera in/out; ignored over the settings panel
