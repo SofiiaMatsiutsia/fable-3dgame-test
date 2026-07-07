@@ -22,6 +22,8 @@ const ZOOM_SPEED = 0.0012;
 const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 2.5;
 
+const UP = new THREE.Vector3(0, 1, 0);
+
 export class PlayerController {
   readonly character: Character;
   private keys = new Set<string>();
@@ -53,15 +55,33 @@ export class PlayerController {
     // Left-mouse-button drag orbits the camera. Hud distinguishes a plain
     // click (build a tower) from a drag (orbit) by movement distance.
     window.addEventListener('pointerdown', (e) => {
-      if (e.button === 0) this.dragging = true;
+      // Only start an orbit when the press begins on the 3D canvas, so
+      // clicking HUD buttons or the shop never grabs the camera.
+      if (e.button === 0 && e.target instanceof HTMLCanvasElement) this.dragging = true;
     });
     window.addEventListener('pointerup', (e) => {
       if (e.button === 0) this.dragging = false;
     });
+    window.addEventListener('pointercancel', () => (this.dragging = false));
     window.addEventListener('pointermove', (e) => {
       if (!this.dragging) return;
+      // If the button was released outside the window we never got pointerup;
+      // e.buttons tells us the real button state, so recover instead of
+      // leaving the camera glued to the cursor.
+      if ((e.buttons & 1) === 0) {
+        this.dragging = false;
+        return;
+      }
       this.camYawOffset -= e.movementX * MOUSE_SENSITIVITY;
-      this.camPitchOffset -= e.movementY * MOUSE_SENSITIVITY;
+      // Clamp the offset itself, not just the final pitch: otherwise it keeps
+      // accumulating past the limit and the camera goes dead until you drag
+      // all the way back through the overshoot.
+      const basePitch = Math.atan2(settings.camHeight, settings.camDistance);
+      this.camPitchOffset = THREE.MathUtils.clamp(
+        this.camPitchOffset - e.movementY * MOUSE_SENSITIVITY,
+        MIN_PITCH - basePitch,
+        MAX_PITCH - basePitch
+      );
     });
 
     // Mouse wheel zooms the camera in/out; ignored over the settings panel
@@ -110,6 +130,9 @@ export class PlayerController {
     this.character.moving = moving;
     if (moving) {
       dir.normalize();
+      // Make WASD camera-relative: W walks away from the camera no matter
+      // how the view has been orbited.
+      dir.applyAxisAngle(UP, this.camYawOffset);
       const pos = this.character.object.position;
       pos.addScaledVector(dir, settings.moveSpeed * dt);
       const bound = ARENA_SIZE - 2;
